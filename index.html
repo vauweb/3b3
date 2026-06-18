@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>CYBER HOOPS 3v3</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="rotate-warning">
+        <div class="rw-inner">
+            <div class="rw-icon">⟳</div>
+            <div class="rw-text">ПОВЕРНИТЕ УСТРОЙСТВО</div>
+            <div class="rw-sub">ГОРИЗОНТАЛЬНАЯ ОРИЕНТАЦИЯ</div>
+        </div>
+    </div>
+
+    <div id="app">
+        <div class="hud">
+            <div class="score-team team-a">
+                <div class="team-label">TEAM NEON</div>
+                <div class="team-score" id="score-a">0</div>
+            </div>
+            <div class="score-center">
+                <div class="timer" id="timer">3:00</div>
+                <div class="period" id="status">ВВЕДЕНИЕ</div>
+            </div>
+            <div class="score-team team-b">
+                <div class="team-label">TEAM ICE</div>
+                <div class="team-score" id="score-b">0</div>
+            </div>
+        </div>
+
+        <div id="game-container"></div>
+
+        <div class="controls">
+            <button class="ctrl-btn" id="btn-pause" data-speed="0">⏸ ПАУЗА</button>
+            <button class="ctrl-btn active" id="btn-play" data-speed="1">▶ ПЛЕЙ</button>
+            <button class="ctrl-btn" id="btn-x2" data-speed="2">▶▶ x2</button>
+            <button class="ctrl-btn" id="btn-x5" data-speed="5">▶▶▶ x5</button>
+            <button class="ctrl-btn danger" id="btn-reset">↻ СБРОС</button>
+        </div>
+
+        <div id="overlay" class="overlay hidden">
+            <div class="overlay-inner">
+                <div class="overlay-title" id="overlay-title">TEAM NEON WINS</div>
+                <div class="overlay-score" id="overlay-score">0 : 0</div>
+                <div class="overlay-hint">МАТЧ ОКОНЧЕН</div>
+                <button class="ctrl-btn primary" id="btn-play-again">↻ СЫГРАТЬ ЕЩЁ</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="phaser.min.js"></script>
+    <script src="src/config.js"></script>
+    <script src="src/iso.js"></script>
+    <script src="src/sprites.js"></script>
+    <script src="src/entities.js"></script>
+    <script src="src/ai.js"></script>
+    <script src="src/ui.js"></script>
+    <script src="src/scene.js"></script>
+    <script src="src/main.js"></script>
+</body>
+</html>
