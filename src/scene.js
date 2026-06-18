@@ -626,10 +626,12 @@ window.GAME = window.GAME || {};
             GAME.ui.updateScore(this.scoreA, this.scoreB);
             this.scoreFlash = 500;
             const inboundTeam = team === 'A' ? 'B' : 'A';
-            this.kickoff(inboundTeam);
+            // Resume play from the basket where the goal was scored.
+            const scoredSide = team === 'A' ? 'right' : 'left';
+            this.kickoff(inboundTeam, scoredSide);
         }
 
-        kickoff(team) {
+        kickoff(team, fromSide) {
             for (const p of this.players) {
                 const sp = p.spawn;
                 p.x = sp.x; p.y = sp.y;
@@ -643,10 +645,20 @@ window.GAME = window.GAME || {};
                 p.lastPasser = null; p.lastPassAt = -99;
             }
             this.setHolder(null);
-            // place ball near center, slight bias toward inbound team side
-            const bx = team === 'A' ? CFG.center.x - 3 : CFG.center.x + 3;
+            // Place the ball at the basket where the goal was scored, just
+            // inside the baseline; falls back to center if no side is given.
+            let bx, by;
+            if (fromSide) {
+                const hoop = this.hoops[fromSide];
+                const inward = fromSide === 'left' ? 1 : -1;
+                bx = hoop.x + inward * 1.5;
+                by = hoop.y;
+            } else {
+                bx = team === 'A' ? CFG.center.x - 3 : CFG.center.x + 3;
+                by = CFG.center.y;
+            }
             this.ball.x = bx;
-            this.ball.y = CFG.center.y;
+            this.ball.y = by;
             this.ball.z = 0;
             this.ball.vx = 0; this.ball.vy = 0; this.ball.vz = 0;
             this.ball.mode = 'loose';
