@@ -26,6 +26,7 @@ window.GAME = window.GAME || {};
             this.scoreB = 0;
             this.matchTime = CFG.matchDuration;
             this.running = false; // match waits on the start screen until a team is chosen
+            this.simPaused = false; // mid-game pause flag (keeps input alive)
             this.players = [];
             this.shakeT = 0;
             this.stealLock = 0; // global steal lockout (ms)
@@ -315,7 +316,9 @@ window.GAME = window.GAME || {};
 
         // -------- Update loop --------
         update(time, delta) {
-            if (!this.running) {
+            // `simPaused` halts the simulation (pause) WITHOUT pausing the scene,
+            // so Phaser input stays active and the control buttons keep working.
+            if (!this.running || this.simPaused) {
                 return;
             }
             const ts = this.time.timeScale || 1;

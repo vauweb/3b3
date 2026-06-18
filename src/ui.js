@@ -240,36 +240,51 @@ window.GAME = window.GAME || {};
             this.fsBtn.on('pointerout', () => { this.fsHover = false; this.drawFsButton(); });
             this.drawFsButton();
 
-            // The actual toggle is bound to NATIVE pointer events on the canvas.
-            // Why not Phaser input / a `click` listener:
-            //  - Phaser dispatches pointer events on the next animation frame,
-            //    which breaks the browser's "user gesture" requirement for
-            //    requestFullscreen ("API can only be initiated by a user gesture").
-            //  - On touch (mobile) Phaser calls preventDefault() on the touch
-            //    sequence, which suppresses the synthetic `click` event, so a
-            //    `click` listener never fires on phones.
-            // Native pointerdown/pointerup run synchronously inside the trusted
-            // gesture (so requestFullscreen is allowed) and are not suppressed.
+            // The toggle is bound to NATIVE events on the canvas (per MDN
+            // Fullscreen API: requestFullscreen() must run inside a user gesture).
+            // We can't use Phaser input for this: Phaser dispatches its pointer
+            // events on the next animation frame, which breaks the gesture, and on
+            // mobile Phaser's preventDefault() on touch can suppress the synthetic
+            // `click`. So we listen to native events that fire synchronously inside
+            // the trusted gesture: pointer events (desktop + most mobile) AND touch
+            // events (reliable mobile fallback). A debounce avoids double toggling
+            // when several of them fire for the same tap.
             if (!this._fsNativeBound) {
                 this._fsNativeBound = true;
                 const canvas = s.sys.game.canvas;
+                const point = (ev) => {
+                    if (ev.changedTouches && ev.changedTouches[0]) {
+                        return { x: ev.changedTouches[0].clientX, y: ev.changedTouches[0].clientY };
+                    }
+                    return { x: ev.clientX, y: ev.clientY };
+                };
                 const inBtn = (ev) => {
                     const u = GAME.ui;
                     if (!u || !u.fsBtn) return false;
                     const rect = canvas.getBoundingClientRect();
                     if (rect.width === 0 || rect.height === 0) return false;
                     const sw = GAME.game.scale.width, sh = GAME.game.scale.height;
-                    const gx = (ev.clientX - rect.left) * (sw / rect.width);
-                    const gy = (ev.clientY - rect.top) * (sh / rect.height);
+                    const p = point(ev);
+                    const gx = (p.x - rect.left) * (sw / rect.width);
+                    const gy = (p.y - rect.top) * (sh / rect.height);
                     const dx = gx - u.fsCx, dy = gy - u.fsCy;
                     return dx * dx + dy * dy <= u.fsR * u.fsR;
                 };
-                let downInside = false;
-                canvas.addEventListener('pointerdown', (ev) => { downInside = inBtn(ev); });
-                canvas.addEventListener('pointerup', (ev) => {
-                    const wasDown = downInside; downInside = false;
-                    if (wasDown && inBtn(ev)) GAME.ui.toggleFullscreen();
-                });
+                let pressedInside = false;
+                let lastToggle = 0;
+                const onDown = (ev) => { if (inBtn(ev)) pressedInside = true; };
+                const onUp = (ev) => {
+                    const wasPressed = pressedInside; pressedInside = false;
+                    if (!wasPressed || !inBtn(ev)) return;
+                    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+                    if (now - lastToggle < 500) return; // debounce click+touch+pointer
+                    lastToggle = now;
+                    GAME.ui.toggleFullscreen();
+                };
+                canvas.addEventListener('pointerdown', onDown);
+                canvas.addEventListener('pointerup', onUp);
+                canvas.addEventListener('touchstart', onDown, { passive: true });
+                canvas.addEventListener('touchend', onUp, { passive: true });
             }
 
             // Sync icon when the browser enters / leaves fullscreen.
@@ -577,9 +592,13 @@ window.GAME = window.GAME || {};
         setSpeed(s) {
             this.speed = s;
             this.paused = false;
-            if (this.sceneSys) {
-                this.sceneSys.resume('GameScene');
-                this.scene.time.timeScale = s;
+            const scene = this.scene;
+            if (scene) {
+                // Clear the pause flag instead of resuming a paused scene, so the
+                // scene's input system is never disrupted.
+                scene.simPaused = false;
+                scene.time.timeScale = s;
+                if (scene.anims) scene.anims.resumeAll();
             }
             this.setStatus(s === 1 ? 'ИГРА' : 'ИГРА x' + s);
             this._setActive();
@@ -587,12 +606,16 @@ window.GAME = window.GAME || {};
 
         setPaused(p) {
             this.paused = p;
-            if (this.sceneSys) {
+            const scene = this.scene;
+            if (scene) {
+                // Freeze the simulation via a flag (NOT scene.pause, which would
+                // also disable Phaser input and break the other buttons).
+                scene.simPaused = p;
                 if (p) {
-                    this.sceneSys.pause('GameScene');
+                    if (scene.anims) scene.anims.pauseAll();
                     this.setStatus('ПАУЗА');
                 } else {
-                    this.sceneSys.resume('GameScene');
+                    if (scene.anims) scene.anims.resumeAll();
                     this.setStatus(this.speed === 1 ? 'ИГРА' : 'ИГРА x' + this.speed);
                 }
             }
