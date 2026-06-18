@@ -96,12 +96,14 @@ window.GAME = window.GAME || {};
         updateVisual() {
             const p = ISO.worldToScreen(this.x, this.y, 0);
             this.sprite.setPosition(p.x, p.y);
+            this.sprite.setScale(ISO.scale);
             this.sprite.setFlipX(this.facing < 0);
             // depth: closer (larger screenY) draws on top; tiny bias per team to avoid z-fight.
             this.sprite.setDepth(p.y + 0.1);
             // shadow slightly offset
             const sh = ISO.worldToScreen(this.x, this.y + 0.18, 0);
             this.shadow.setPosition(sh.x, sh.y);
+            this.shadow.setScale(ISO.scale);
             this.shadow.setDepth(p.y - 0.5);
         }
 
@@ -275,10 +277,11 @@ window.GAME = window.GAME || {};
             const lift = ISO.zToScreen(this.z);
             const p = ISO.worldToScreen(this.x, this.y, 0);
             this.sprite.setPosition(p.x, p.y - lift);
+            this.sprite.setScale(ISO.scale);
             this.sprite.setDepth(p.y - lift + 60);
             // shadow at ground
             const sh = ISO.worldToScreen(this.x, this.y + 0.12, 0);
-            const sc = Math.max(0.4, 1 - this.z * 0.12);
+            const sc = Math.max(0.4, 1 - this.z * 0.12) * ISO.scale;
             this.shadow.setPosition(sh.x, sh.y);
             this.shadow.setScale(sc, sc * 0.7);
             this.shadow.setDepth(p.y - 0.4);

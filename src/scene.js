@@ -72,11 +72,11 @@ window.GAME = window.GAME || {};
             GAME.ui.setStatus('ИГРА');
             GAME.ui.hideOverlay();
 
-            // One-time layout at the fixed base resolution.
-            // Phaser Scale.FIT handles all window-resize scaling/centering,
-            // so we never need to recompute positions on resize.
-            const base = ISO.baseSize();
-            this.layoutField(base.w, base.h);
+            // Re-fit the field into the current canvas size and keep it
+            // centered whenever the window resizes (Scale.RESIZE mode).
+            this.scale.on('resize', this.onResize, this);
+            this.events.once('shutdown', () => this.scale.off('resize', this.onResize, this));
+            this.layoutField(this.scale.width, this.scale.height);
 
             // score flash tween target
             this.scoreFlash = 0;
@@ -90,6 +90,13 @@ window.GAME = window.GAME || {};
                 gameTime: this.clock,
                 shotClock: this.possessionTeam ? (this.clock - this.possessionStart) : 0,
             };
+        }
+
+        // Recompute layout when the canvas (window) size changes.
+        onResize() {
+            if (!this.scale) return;
+            this.layoutField(this.scale.width, this.scale.height);
+            if (GAME.ui) GAME.ui.resize(this.scale.width, this.scale.height);
         }
 
         // -------- Layout (computed once; FIT handles responsive) --------

@@ -55,22 +55,25 @@ window.GAME = window.GAME || {};
             return iso.fieldBox;
         },
 
-        // Fit the field into a viewport, centering it. Adds padding.
+        // Fit the field into a viewport and center it (court + hoop headroom
+        // centered as a block). Recomputed on every resize so the field always
+        // fits entirely within the canvas regardless of its aspect ratio.
         fit(viewW, viewH, padX, padY) {
             padX = padX || 0;
             padY = padY || 0;
             const box = iso.computeFieldBox();
-            // Add headroom above the field for tall sprites / hoops.
+            // Headroom above the court plane for hoops / tall sprites.
             const headroom = CFG.field.tileH * 4;
             const availW = viewW - padX * 2;
             const availH = viewH - padY * 2;
             const scaleX = availW / box.w;
             const scaleY = availH / (box.h + headroom);
             iso.scale = Math.min(scaleX, scaleY);
-            // Center horizontally on the field box center.
+            // Center the field box horizontally.
             iso.originX = (viewW - box.w * iso.scale) / 2 - box.x * iso.scale;
-            // Place vertically: account for headroom (hoops/sprites extend upward).
-            iso.originY = padY + headroom * iso.scale - box.y * iso.scale;
+            // Vertically center the [headroom(above) + court box] block.
+            const usedH = (box.h + headroom) * iso.scale;
+            iso.originY = padY + (availH - usedH) / 2 + headroom * iso.scale - box.y * iso.scale;
         },
 
         // Depth sort key: larger screenY = closer to camera = drawn later (higher depth).
