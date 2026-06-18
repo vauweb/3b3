@@ -57,16 +57,10 @@ body {
 .rw-inner { display: flex; flex-direction: column; align-items: center; }
 
 .rw-icon {
-    font-size: 64px;
-    color: var(--neon-b);
+    width: 84px;
+    height: 84px;
     margin-bottom: 18px;
-    animation: spin 2s linear infinite;
-    text-shadow: 0 0 20px var(--neon-b-soft);
-}
-
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    filter: drop-shadow(0 0 18px var(--neon-b-soft));
 }
 
 .rw-text {

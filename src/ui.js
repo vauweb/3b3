@@ -160,7 +160,6 @@ window.GAME = window.GAME || {};
             const s = this.scene;
             const defs = [
                 { kind: 'pause', speed: 0 },
-                { kind: 'speed', speed: 1 },
                 { kind: 'speed', speed: 2 },
                 { kind: 'speed', speed: 5 },
                 { kind: 'reset', speed: -1 },
@@ -448,10 +447,14 @@ window.GAME = window.GAME || {};
         _drawCtrlIcon(btn, color) {
             const g = btn.g, cx = btn.cx, cy = btn.cy;
             if (btn.kind === 'pause') {
-                const bw = 5, bh = 16, gap = 5;
-                g.fillStyle(color, 1);
-                g.fillRect(cx - gap / 2 - bw, cy - bh / 2, bw, bh);
-                g.fillRect(cx + gap / 2, cy - bh / 2, bw, bh);
+                if (this.paused) {
+                    this._drawPlays(g, cx, cy, 1, color);
+                } else {
+                    const bw = 5, bh = 16, gap = 5;
+                    g.fillStyle(color, 1);
+                    g.fillRect(cx - gap / 2 - bw, cy - bh / 2, bw, bh);
+                    g.fillRect(cx + gap / 2, cy - bh / 2, bw, bh);
+                }
             } else if (btn.kind === 'speed') {
                 const n = btn.speed === 1 ? 1 : (btn.speed === 2 ? 2 : 3);
                 this._drawPlays(g, cx, cy, n, color);
@@ -611,16 +614,21 @@ window.GAME = window.GAME || {};
         },
 
         _onButton(kind, speed) {
-            if (kind === 'pause') this.setPaused(true);
-            else if (kind === 'speed') this.setSpeed(speed);
+            if (kind === 'pause') {
+                if (this.paused) this.setSpeed(1);
+                else this.togglePause();
+            }
+            else if (kind === 'speed') {
+                if (!this.paused && this.speed === speed) this.setSpeed(1);
+                else this.setSpeed(speed);
+            }
             else if (kind === 'reset') this.reset();
         },
 
         _setActive() {
             for (const b of this.buttons) {
                 let act = false;
-                if (b.kind === 'pause') act = this.paused;
-                else if (b.kind === 'speed') act = !this.paused && this.speed === b.speed;
+                if (b.kind === 'speed') act = !this.paused && this.speed === b.speed;
                 b.active = act;
                 this.drawButton(b);
             }
