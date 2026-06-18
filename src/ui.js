@@ -4,6 +4,7 @@ window.GAME = window.GAME || {};
     'use strict';
 
     const FONT = "'Courier New', monospace";
+    const D = window.devicePixelRatio || 1;
 
     const ui = {
         scene: null,
@@ -53,14 +54,25 @@ window.GAME = window.GAME || {};
             this.timerUrgent = false;
             this._startHover = null;
 
-            this.W = scene.scale.width;
-            this.H = scene.scale.height;
+            this.W = scene.scale.width / D;
+            this.H = scene.scale.height / D;
+
+            // All HUD/controls/overlays are authored in CSS pixels. They live in a
+            // container scaled by dpr so the GPU renders them at device resolution
+            // (crisp); text textures are rasterized at dpr via setResolution.
+            this.layer = scene.add.container(0, 0).setDepth(1e6);
 
             this.createHUD();
             this.createControls();
             this.createOverlay();
             this.createStartScreen();
             this.createFullscreen();
+
+            // Reparent every UI object into the scaled layer and bump text res.
+            this.layer.add(this.uiObjects());
+            for (const t of this.uiTexts()) t.setResolution(D);
+            this.layer.setScale(D);
+
             this.layout();
 
             if (!this._keyBound) {
@@ -73,9 +85,35 @@ window.GAME = window.GAME || {};
         },
 
         resize(w, h) {
-            this.W = w;
-            this.H = h;
+            this.W = w / D;
+            this.H = h / D;
             this.layout();
+        },
+
+        // All UI display objects (live in the dpr-scaled layer).
+        uiObjects() {
+            const o = [
+                this.lblA, this.scoreA, this.lblB, this.scoreB, this.timer, this.status,
+                this.ovBg, this.ovPanel, this.ovTitle, this.ovScore, this.ovChoice, this.ovVerdict,
+                this.ovBtn, this.ovBtnTxt,
+                this.startBg, this.startTitle, this.startHint,
+                this.startBtnA, this.startBtnAName, this.startBtnASub,
+                this.startBtnB, this.startBtnBName, this.startBtnBSub,
+                this.fsBtn,
+            ];
+            for (const b of this.buttons) o.push(b.g);
+            return o.filter(Boolean);
+        },
+
+        // Text objects whose texture must be rasterized at dpr to stay crisp.
+        uiTexts() {
+            return [
+                this.lblA, this.scoreA, this.lblB, this.scoreB, this.timer, this.status,
+                this.ovTitle, this.ovScore, this.ovChoice, this.ovVerdict, this.ovBtnTxt,
+                this.startTitle, this.startHint,
+                this.startBtnAName, this.startBtnASub,
+                this.startBtnBName, this.startBtnBSub,
+            ].filter(Boolean);
         },
 
         _onKey(e) {
@@ -261,8 +299,9 @@ window.GAME = window.GAME || {};
                     if (rect.width === 0 || rect.height === 0) return false;
                     const sw = GAME.game.scale.width, sh = GAME.game.scale.height;
                     const p = point(ev);
-                    const gx = (p.x - rect.left) * (sw / rect.width);
-                    const gy = (p.y - rect.top) * (sh / rect.height);
+                    // Device coords -> CSS-local (the UI layer is scaled by D).
+                    const gx = (p.x - rect.left) * (sw / rect.width) / D;
+                    const gy = (p.y - rect.top) * (sh / rect.height) / D;
                     const dx = gx - u.fsCx, dy = gy - u.fsCy;
                     return dx * dx + dy * dy <= u.fsR * u.fsR;
                 };
