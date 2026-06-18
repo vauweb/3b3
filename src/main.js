@@ -44,4 +44,12 @@ window.GAME = window.GAME || {};
 
     GAME.game = game;
     GAME.dpr = dpr;
+
+    // Register the service worker for offline / installable PWA support.
+    // Runs only over http(s); fails silently on file:// or unsupported browsers.
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+            navigator.serviceWorker.register('./sw.js').catch(function () { /* ignore */ });
+        });
+    }
 })();

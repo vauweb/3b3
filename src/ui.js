@@ -13,6 +13,7 @@ window.GAME = window.GAME || {};
         paused: false,
         overlayShown: false,
         startShown: false,
+        standalone: false,
         prediction: null, // 'A' | 'B' | null
         _keyBound: false,
 
@@ -53,6 +54,7 @@ window.GAME = window.GAME || {};
             this.prediction = null;
             this.timerUrgent = false;
             this._startHover = null;
+            this.standalone = this._detectStandalone();
 
             this.W = scene.scale.width / D;
             this.H = scene.scale.height / D;
@@ -227,7 +229,7 @@ window.GAME = window.GAME || {};
             this.startBg.setInteractive(this.startBgHit, Phaser.Geom.Rectangle.Contains);
             this.startBg.setVisible(false);
 
-            this.startTitle = s.add.text(0, 0, 'CYBER HOOPS 3v3', {
+            this.startTitle = s.add.text(0, 0, '3 BASKET 3', {
                 fontFamily: FONT, fontSize: '54px', fontStyle: 'bold', color: '#e8f8ff',
             }).setOrigin(0.5, 0.5).setDepth(3001).setShadow(0, 0, '#7afcff', 26, true, true).setLetterSpacing(8).setVisible(false);
 
@@ -276,6 +278,12 @@ window.GAME = window.GAME || {};
             this.fsBtn.on('pointerout', () => { this.fsHover = false; this.drawFsButton(); });
             this.drawFsButton();
 
+            // Installed PWA: the app already runs fullscreen, so hide the toggle.
+            if (this.standalone) {
+                this.fsBtn.setVisible(false);
+                if (this.fsBtn.input) this.fsBtn.input.enabled = false;
+            }
+
             // The toggle is bound to NATIVE events on the canvas (per MDN
             // Fullscreen API: requestFullscreen() must run inside a user gesture).
             // We can't use Phaser input for this: Phaser dispatches its pointer
@@ -296,7 +304,7 @@ window.GAME = window.GAME || {};
                 };
                 const inBtn = (ev) => {
                     const u = GAME.ui;
-                    if (!u || !u.fsBtn) return false;
+                    if (!u || !u.fsBtn || u.standalone) return false;
                     const rect = canvas.getBoundingClientRect();
                     if (rect.width === 0 || rect.height === 0) return false;
                     const sw = GAME.game.scale.width, sh = GAME.game.scale.height;
@@ -538,6 +546,17 @@ window.GAME = window.GAME || {};
 
         _isFullscreen() {
             return !!(document.fullscreenElement || document.webkitFullscreenElement);
+        },
+
+        // True when launched as an installed PWA (no browser chrome). In that mode
+        // the app already fills the screen, so the fullscreen toggle is redundant.
+        _detectStandalone() {
+            try {
+                if (window.matchMedia('(display-mode: standalone)').matches) return true;
+            } catch (e) { /* matchMedia unavailable */ }
+            // iOS Safari (pre-16.4) exposes this only on navigator.
+            if (window.navigator && window.navigator.standalone === true) return true;
+            return false;
         },
 
         drawFsButton() {
