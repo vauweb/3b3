@@ -551,9 +551,17 @@ window.GAME = window.GAME || {};
         // True when launched as an installed PWA (no browser chrome). In that mode
         // the app already fills the screen, so the fullscreen toggle is redundant.
         _detectStandalone() {
-            try {
-                if (window.matchMedia('(display-mode: standalone)').matches) return true;
-            } catch (e) { /* matchMedia unavailable */ }
+            const m = window.matchMedia;
+            if (m) {
+                try {
+                    // Any non-browser display mode means the app is installed and
+                    // running without the address bar / navigation buttons.
+                    if (m('(display-mode: fullscreen)').matches) return true;
+                    if (m('(display-mode: standalone)').matches) return true;
+                    if (m('(display-mode: minimal-ui)').matches) return true;
+                    if (m('(display-mode: window-controls-overlay)').matches) return true;
+                } catch (e) { /* matchMedia unavailable */ }
+            }
             // iOS Safari (pre-16.4) exposes this only on navigator.
             if (window.navigator && window.navigator.standalone === true) return true;
             return false;
