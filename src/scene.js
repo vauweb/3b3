@@ -74,6 +74,7 @@ window.GAME = window.GAME || {};
             // centered whenever the window resizes (Scale.RESIZE mode).
             this.scale.on('resize', this.onResize, this);
             this.events.once('shutdown', () => this.scale.off('resize', this.onResize, this));
+            this.applyHiDPI();
             this.layoutField(this.scale.width, this.scale.height);
 
             // score flash tween target
@@ -93,8 +94,30 @@ window.GAME = window.GAME || {};
         // Recompute layout when the canvas (window) size changes.
         onResize() {
             if (!this.scale) return;
+            this.applyHiDPI();
             this.layoutField(this.scale.width, this.scale.height);
             if (GAME.ui) GAME.ui.resize(this.scale.width, this.scale.height);
+        }
+
+        // Raise the canvas backing store to CSS size * devicePixelRatio so the
+        // scene renders crisp on HiDPI/retina screens. Display size stays in CSS
+        // (the canvas fills #game-container). Scale.RESIZE resets the canvas to
+        // CSS pixels on every resize, so this runs after each resize; the GL
+        // viewport is re-synced through renderer.resize(). Game coordinates
+        // (scale.width/height) remain in CSS pixels, so layout/input are unchanged.
+        applyHiDPI() {
+            const cv = this.sys.game.canvas;
+            const dpr = window.devicePixelRatio || 1;
+            const bw = Math.max(1, Math.round(this.scale.width * dpr));
+            const bh = Math.max(1, Math.round(this.scale.height * dpr));
+            if (cv.width !== bw || cv.height !== bh) {
+                cv.width = bw;
+                cv.height = bh;
+            }
+            const renderer = this.game.renderer;
+            if (renderer && (renderer.width !== bw || renderer.height !== bh) && typeof renderer.resize === 'function') {
+                renderer.resize(bw, bh);
+            }
         }
 
         // -------- Layout (computed once; FIT handles responsive) --------
