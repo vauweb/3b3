@@ -90,7 +90,10 @@ window.GAME = window.GAME || {};
             this.layout();
         },
 
-        // All UI display objects (live in the dpr-scaled layer).
+        // All UI display objects (live in the dpr-scaled layer). Returned sorted
+        // by depth ascending: Phaser Containers render children in insertion order
+        // (not by depth), so this order IS the z-order — controls under the result
+        // overlay under the start screen, with the fullscreen button on top.
         uiObjects() {
             const o = [
                 this.lblA, this.scoreA, this.lblB, this.scoreB, this.timer, this.status,
@@ -102,7 +105,7 @@ window.GAME = window.GAME || {};
                 this.fsBtn,
             ];
             for (const b of this.buttons) o.push(b.g);
-            return o.filter(Boolean);
+            return o.filter(Boolean).sort((a, b) => (a.depth || 0) - (b.depth || 0));
         },
 
         // Text objects whose texture must be rasterized at dpr to stay crisp.
