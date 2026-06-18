@@ -25,7 +25,7 @@ window.GAME = window.GAME || {};
             this.scoreA = 0;
             this.scoreB = 0;
             this.matchTime = CFG.matchDuration;
-            this.running = true;
+            this.running = false; // match waits on the start screen until a team is chosen
             this.players = [];
             this.shakeT = 0;
             this.stealLock = 0; // global steal lockout (ms)
@@ -65,12 +65,9 @@ window.GAME = window.GAME || {};
             // Ball at center
             this.ball = new GAME.entities.Ball(this, CFG.center.x, CFG.center.y);
 
-            // UI
+            // UI: build HUD/controls/overlays and show the start screen.
+            // The match itself starts when the player picks a team.
             GAME.ui.init(this);
-            GAME.ui.updateScore(this.scoreA, this.scoreB);
-            GAME.ui.updateTimer(this.matchTime);
-            GAME.ui.setStatus('ИГРА');
-            GAME.ui.hideOverlay();
 
             // Re-fit the field into the current canvas size and keep it
             // centered whenever the window resizes (Scale.RESIZE mode).
