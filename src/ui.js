@@ -118,20 +118,16 @@ window.GAME = window.GAME || {};
         createControls() {
             const s = this.scene;
             const defs = [
-                { icon: '\u23F8', kind: 'pause', speed: 0 },            // pause
-                { icon: '\u25B6', kind: 'speed', speed: 1 },            // play (x1)
-                { icon: '\u25B6\u25B6', kind: 'speed', speed: 2 },      // x2
-                { icon: '\u25B6\u25B6\u25B6', kind: 'speed', speed: 5 }, // x5
-                { icon: '\u21BB', kind: 'reset', speed: -1 },           // reset -> start screen
+                { kind: 'pause', speed: 0 },
+                { kind: 'speed', speed: 1 },
+                { kind: 'speed', speed: 2 },
+                { kind: 'speed', speed: 5 },
+                { kind: 'reset', speed: -1 },
             ];
 
             this.buttons = defs.map((d) => {
                 const btn = Object.assign({}, d, { cx: 0, cy: 0, r: 24, active: false, hover: false });
                 btn.g = s.add.graphics().setDepth(1001);
-                btn.txt = s.add.text(0, 0, d.icon, {
-                    fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: '#e8f8ff',
-                }).setOrigin(0.5).setDepth(1002);
-
                 btn.hit = new Phaser.Geom.Circle(0, 0, 1);
                 btn.g.setInteractive(btn.hit, Phaser.Geom.Circle.Contains);
                 btn.g.on('pointerover', () => { btn.hover = true; this.drawButton(btn); });
@@ -178,7 +174,7 @@ window.GAME = window.GAME || {};
             this.ovBtn.setVisible(false);
             this.ovBtnPos = { x: 0, y: 0, w: 260, h: 48, hover: false };
 
-            this.ovBtnTxt = s.add.text(0, 0, '\u21BB СЫГРАТЬ ЕЩЁ', {
+            this.ovBtnTxt = s.add.text(0, 0, 'СЫГРАТЬ ЕЩЁ', {
                 fontFamily: FONT, fontSize: '17px', fontStyle: 'bold', color: '#00f0ff',
             }).setOrigin(0.5).setDepth(2003).setLetterSpacing(3).setVisible(false);
         },
@@ -316,7 +312,6 @@ window.GAME = window.GAME || {};
                 b.cx = cx; b.cy = cy; b.r = r;
                 b.hit.setPosition(cx, cy); b.hit.radius = r;
                 this.drawButton(b);
-                b.txt.setPosition(cx, cy);
                 cx += r * 2 + gap;
             }
 
@@ -390,22 +385,83 @@ window.GAME = window.GAME || {};
             const g = btn.g;
             g.clear();
             const danger = btn.kind === 'reset';
-            let border = 0x7afcff, fill = 0x0a0e1e, fillA = 0.8, txt = '#e8f8ff';
+            let border = 0x7afcff, fill = 0x0a0e1e, fillA = 0.8, ic = 0xe8f8ff;
 
             if (danger) {
-                border = 0xff3860; txt = '#ffaab8';
-                if (btn.hover) txt = '#ff3860';
+                border = 0xff3860; ic = 0xffaab8;
+                if (btn.hover) ic = 0xff3860;
             } else if (btn.active) {
-                border = 0x00f0ff; fill = 0x00f0ff; fillA = 0.22; txt = '#00f0ff';
+                border = 0x00f0ff; fill = 0x00f0ff; fillA = 0.22; ic = 0x00f0ff;
             } else if (btn.hover) {
-                border = 0x00f0ff; txt = '#00f0ff';
+                border = 0x00f0ff; ic = 0x00f0ff;
             }
 
             g.fillStyle(fill, fillA);
             g.fillCircle(btn.cx, btn.cy, btn.r);
             g.lineStyle(2.5, border, 1);
             g.strokeCircle(btn.cx, btn.cy, btn.r);
-            btn.txt.setColor(txt);
+            this._drawCtrlIcon(btn, ic);
+        },
+
+        _drawCtrlIcon(btn, color) {
+            const g = btn.g, cx = btn.cx, cy = btn.cy;
+            if (btn.kind === 'pause') {
+                const bw = 5, bh = 16, gap = 5;
+                g.fillStyle(color, 1);
+                g.fillRect(cx - gap / 2 - bw, cy - bh / 2, bw, bh);
+                g.fillRect(cx + gap / 2, cy - bh / 2, bw, bh);
+            } else if (btn.kind === 'speed') {
+                const n = btn.speed === 1 ? 1 : (btn.speed === 2 ? 2 : 3);
+                this._drawPlays(g, cx, cy, n, color);
+            } else if (btn.kind === 'reset') {
+                this._drawReset(g, cx, cy, color);
+            }
+        },
+
+        _drawPlays(g, cx, cy, n, color) {
+            const tw = n === 1 ? 12 : (n === 2 ? 9 : 7);
+            const th = n === 1 ? 11 : (n === 2 ? 9 : 8);
+            const gap = 2;
+            const totalW = n * tw + (n - 1) * gap;
+            let x = cx - totalW / 2;
+            g.fillStyle(color, 1);
+            for (let i = 0; i < n; i++) {
+                g.beginPath();
+                g.moveTo(x, cy - th);
+                g.lineTo(x, cy + th);
+                g.lineTo(x + tw, cy);
+                g.closePath();
+                g.fillPath();
+                x += tw + gap;
+            }
+        },
+
+        _drawReset(g, cx, cy, color) {
+            const r = 9;
+            const startDeg = 315, endDeg = 585;
+            const steps = 28;
+            g.lineStyle(2.4, color, 1);
+            g.beginPath();
+            for (let i = 0; i <= steps; i++) {
+                const deg = startDeg + (endDeg - startDeg) * (i / steps);
+                const a = Phaser.Math.DegToRad(deg);
+                const x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
+                if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+            }
+            g.strokePath();
+            const tipA = Phaser.Math.DegToRad(endDeg);
+            const ex = cx + r * Math.cos(tipA), ey = cy + r * Math.sin(tipA);
+            const ang = Math.atan2(Math.cos(tipA), -Math.sin(tipA));
+            const len = 6, spread = 0.55;
+            const b1 = ang + Math.PI - spread;
+            const b2 = ang + Math.PI + spread;
+            g.fillStyle(color, 1);
+            g.beginPath();
+            g.moveTo(ex, ey);
+            g.lineTo(ex + Math.cos(b1) * len, ey + Math.sin(b1) * len);
+            g.lineTo(ex + Math.cos(b2) * len, ey + Math.sin(b2) * len);
+            g.closePath();
+            g.fillPath();
         },
 
         _drawStartBtn(team) {
@@ -509,7 +565,6 @@ window.GAME = window.GAME || {};
         setControlsVisible(v) {
             for (const b of this.buttons) {
                 b.g.setVisible(v);
-                b.txt.setVisible(v);
             }
         },
 
