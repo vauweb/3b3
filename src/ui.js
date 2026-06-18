@@ -240,29 +240,36 @@ window.GAME = window.GAME || {};
             this.fsBtn.on('pointerout', () => { this.fsHover = false; this.drawFsButton(); });
             this.drawFsButton();
 
-            // The actual toggle is bound to a NATIVE click on the canvas.
-            // Phaser dispatches pointer events on the next animation frame, which
-            // breaks the browser's "user gesture" requirement for requestFullscreen
-            // ("API can only be initiated by a user gesture"). A native listener
-            // runs synchronously inside the trusted gesture, so it works.
+            // The actual toggle is bound to NATIVE pointer events on the canvas.
+            // Why not Phaser input / a `click` listener:
+            //  - Phaser dispatches pointer events on the next animation frame,
+            //    which breaks the browser's "user gesture" requirement for
+            //    requestFullscreen ("API can only be initiated by a user gesture").
+            //  - On touch (mobile) Phaser calls preventDefault() on the touch
+            //    sequence, which suppresses the synthetic `click` event, so a
+            //    `click` listener never fires on phones.
+            // Native pointerdown/pointerup run synchronously inside the trusted
+            // gesture (so requestFullscreen is allowed) and are not suppressed.
             if (!this._fsNativeBound) {
                 this._fsNativeBound = true;
                 const canvas = s.sys.game.canvas;
-                const onNativeClick = (ev) => {
+                const inBtn = (ev) => {
                     const u = GAME.ui;
-                    if (!u || !u.fsBtn) return;
+                    if (!u || !u.fsBtn) return false;
                     const rect = canvas.getBoundingClientRect();
-                    if (rect.width === 0 || rect.height === 0) return;
+                    if (rect.width === 0 || rect.height === 0) return false;
                     const sw = GAME.game.scale.width, sh = GAME.game.scale.height;
                     const gx = (ev.clientX - rect.left) * (sw / rect.width);
                     const gy = (ev.clientY - rect.top) * (sh / rect.height);
                     const dx = gx - u.fsCx, dy = gy - u.fsCy;
-                    if (dx * dx + dy * dy <= u.fsR * u.fsR) {
-                        ev.preventDefault();
-                        u.toggleFullscreen();
-                    }
+                    return dx * dx + dy * dy <= u.fsR * u.fsR;
                 };
-                canvas.addEventListener('click', onNativeClick);
+                let downInside = false;
+                canvas.addEventListener('pointerdown', (ev) => { downInside = inBtn(ev); });
+                canvas.addEventListener('pointerup', (ev) => {
+                    const wasDown = downInside; downInside = false;
+                    if (wasDown && inBtn(ev)) GAME.ui.toggleFullscreen();
+                });
             }
 
             // Sync icon when the browser enters / leaves fullscreen.
