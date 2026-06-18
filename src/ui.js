@@ -38,6 +38,10 @@ window.GAME = window.GAME || {};
         startBtnB: null, startBtnBName: null, startBtnBSub: null, startBtnBHit: null,
         _startHover: null, _btnA: null, _btnB: null,
 
+        // Fullscreen toggle (bottom-right, always visible)
+        fsBtn: null, fsHit: null, fsHover: false,
+        fsCx: 0, fsCy: 0, fsR: 24, _fsBound: false,
+
         init(scene) {
             this.scene = scene;
             this.sceneSys = scene.scene;
@@ -56,6 +60,7 @@ window.GAME = window.GAME || {};
             this.createControls();
             this.createOverlay();
             this.createStartScreen();
+            this.createFullscreen();
             this.layout();
 
             if (!this._keyBound) {
@@ -223,6 +228,51 @@ window.GAME = window.GAME || {};
             this.startBtnB.on('pointerdown', () => { if (this.startShown) this.startMatch('B'); });
         },
 
+        createFullscreen() {
+            const s = this.scene;
+            this.fsHover = false;
+            this.fsR = 24;
+            this.fsBtn = s.add.graphics().setDepth(4000); // always on top of every screen
+            this.fsHit = new Phaser.Geom.Circle(0, 0, 1);
+            this.fsBtn.setInteractive(this.fsHit, Phaser.Geom.Circle.Contains);
+            // Hover highlight still goes through Phaser input.
+            this.fsBtn.on('pointerover', () => { this.fsHover = true; this.drawFsButton(); });
+            this.fsBtn.on('pointerout', () => { this.fsHover = false; this.drawFsButton(); });
+            this.drawFsButton();
+
+            // The actual toggle is bound to a NATIVE click on the canvas.
+            // Phaser dispatches pointer events on the next animation frame, which
+            // breaks the browser's "user gesture" requirement for requestFullscreen
+            // ("API can only be initiated by a user gesture"). A native listener
+            // runs synchronously inside the trusted gesture, so it works.
+            if (!this._fsNativeBound) {
+                this._fsNativeBound = true;
+                const canvas = s.sys.game.canvas;
+                const onNativeClick = (ev) => {
+                    const u = GAME.ui;
+                    if (!u || !u.fsBtn) return;
+                    const rect = canvas.getBoundingClientRect();
+                    if (rect.width === 0 || rect.height === 0) return;
+                    const sw = GAME.game.scale.width, sh = GAME.game.scale.height;
+                    const gx = (ev.clientX - rect.left) * (sw / rect.width);
+                    const gy = (ev.clientY - rect.top) * (sh / rect.height);
+                    const dx = gx - u.fsCx, dy = gy - u.fsCy;
+                    if (dx * dx + dy * dy <= u.fsR * u.fsR) {
+                        ev.preventDefault();
+                        u.toggleFullscreen();
+                    }
+                };
+                canvas.addEventListener('click', onNativeClick);
+            }
+
+            // Sync icon when the browser enters / leaves fullscreen.
+            if (!this._fsBound) {
+                this._fsBound = true;
+                document.addEventListener('fullscreenchange', () => this.drawFsButton());
+                document.addEventListener('webkitfullscreenchange', () => this.drawFsButton());
+            }
+        },
+
         // ---------------- Positioning (re-run on resize) ----------------
         layout() {
             const W = this.W, H = this.H;
@@ -272,6 +322,13 @@ window.GAME = window.GAME || {};
 
             // Start screen layout.
             this._layoutStart();
+
+            // Fullscreen toggle (bottom-right), always visible.
+            this.fsCx = W - M - this.fsR;
+            this.fsCy = H - M - this.fsR;
+            this.fsHit.setPosition(this.fsCx, this.fsCy);
+            this.fsHit.radius = this.fsR;
+            this.drawFsButton();
         },
 
         _layoutStart() {
@@ -354,6 +411,61 @@ window.GAME = window.GAME || {};
             g.fillRoundedRect(b.x, b.y, b.w, b.h, 8);
             g.lineStyle(2, 0x00f0ff, 1);
             g.strokeRoundedRect(b.x, b.y, b.w, b.h, 8);
+        },
+
+        _isFullscreen() {
+            return !!(document.fullscreenElement || document.webkitFullscreenElement);
+        },
+
+        drawFsButton() {
+            const g = this.fsBtn;
+            if (!g) return;
+            g.clear();
+            const cx = this.fsCx, cy = this.fsCy, r = this.fsR;
+            const isFs = this._isFullscreen();
+            let border = 0x7afcff, fill = 0x0a0e1e, fillA = 0.8;
+            if (isFs) { border = 0x00f0ff; fill = 0x00f0ff; fillA = 0.16; }
+            else if (this.fsHover) { border = 0x00f0ff; }
+            g.fillStyle(fill, fillA);
+            g.fillCircle(cx, cy, r);
+            g.lineStyle(2.5, border, 1);
+            g.strokeCircle(cx, cy, r);
+
+            const col = (isFs || this.fsHover) ? 0x00f0ff : 0xe8f8ff;
+            g.lineStyle(2.2, col, 1);
+            if (!isFs) {
+                // "expand" — four corner brackets
+                const sz = 18, a = 6;
+                const x0 = cx - sz / 2, x1 = cx + sz / 2;
+                const y0 = cy - sz / 2, y1 = cy + sz / 2;
+                g.beginPath();
+                g.moveTo(x0, y0 + a); g.lineTo(x0, y0); g.lineTo(x0 + a, y0);     // top-left
+                g.moveTo(x1 - a, y0); g.lineTo(x1, y0); g.lineTo(x1, y0 + a);     // top-right
+                g.moveTo(x0, y1 - a); g.lineTo(x0, y1); g.lineTo(x0 + a, y1);     // bottom-left
+                g.moveTo(x1 - a, y1); g.lineTo(x1, y1); g.lineTo(x1, y1 - a);     // bottom-right
+                g.strokePath();
+            } else {
+                // "restore" — two offset squares
+                const sz = 13, o = 4;
+                g.strokeRect(cx - sz / 2 - o / 2, cy - sz / 2 - o / 2, sz, sz);
+                g.strokeRect(cx - sz / 2 + o / 2, cy - sz / 2 + o / 2, sz, sz);
+            }
+        },
+
+        toggleFullscreen() {
+            const el = document.documentElement;
+            try {
+                if (!this._isFullscreen()) {
+                    const p = el.requestFullscreen ? el.requestFullscreen()
+                        : (el.webkitRequestFullscreen ? el.webkitRequestFullscreen() : null);
+                    if (p && p.catch) p.catch(() => {});
+                } else {
+                    const p = document.exitFullscreen ? document.exitFullscreen()
+                        : (document.webkitExitFullscreen ? document.webkitExitFullscreen() : null);
+                    if (p && p.catch) p.catch(() => {});
+                }
+            } catch (e) { /* ignore */ }
+            this.drawFsButton();
         },
 
         _toggleOverlayInput(enable) {
